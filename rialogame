@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Meme Card Shuffle Game</title>
+  <style>
+    body {
+      text-align: center;
+      font-family: Arial, sans-serif;
+      background: linear-gradient(rgba(0,0,0,0.6), rgba(0,0,0,0.6)),
+                  url('d5d0a595-ee93-40f7-98e9-ba98dcf0e44f.png') no-repeat center center fixed;
+      background-size: cover;
+      overflow-x: hidden;
+      color: white;
+    }
+    h1 { color: #fff; }
+    #rules {
+      background: rgba(0,0,0,0.6);
+      margin: 10px auto;
+      padding: 10px;
+      border-radius: 10px;
+      width: 60%;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.5);
+    }
+    #game {
+      display: flex;
+      justify-content: center;
+      margin-top: 20px;
+      perspective: 1000px;
+    }
+    .card {
+      width: 120px;
+      height: 180px;
+      margin: 10px;
+      position: relative;
+      cursor: pointer;
+      transform-style: preserve-3d;
+      transition: transform 0.8s;
+    }
+    .card.flipped {
+      transform: rotateY(180deg);
+    }
+    .card-face {
+      position: absolute;
+      width: 100%;
+      height: 100%;
+      backface-visibility: hidden;
+      border: 2px solid #9e59ff;
+      border-radius: 12px;
+      background: black;
+      overflow: hidden;
+    }
+    /* Card back (hidden side) */
+    .card-back {
+      background: url('39b52e55b3dd11422d230be6cee64196.png') no-repeat center center;
+      background-size: cover;
+    }
+    /* Neon glow on hover (only for the back side) */
+    .card:hover .card-back {
+      box-shadow:
+        0 8px 26px rgba(0,0,0,0.6),
+        0 0 18px rgba(158, 89, 255, 0.45),
+        0 0 36px rgba(158, 89, 255, 0.28);
+      transform: translateY(-4px);
+    }
+    .card-front {
+      transform: rotateY(180deg);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      background: white;
+    }
+    .card-front img {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+    }
+    button {
+      margin: 10px;
+      padding: 10px 20px;
+      cursor: pointer;
+      border-radius: 5px;
+      border: none;
+      background: #9e59ff;
+      color: white;
+      font-size: 16px;
+      box-shadow:
+        0 0 12px rgba(158, 89, 255, 0.6),
+        0 0 24px rgba(158, 89, 255, 0.4);
+      transition: 0.3s;
+    }
+    button:hover {
+      background: #b47cff;
+      box-shadow:
+        0 0 18px rgba(158, 89, 255, 0.9),
+        0 0 36px rgba(158, 89, 255, 0.6);
+    }
+    #confettiCanvas {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      z-index: 9999;
+    }
+  </style>
+</head>
+<body>
+  <h1>🎴 Meme Card Shuffle Game 🎴</h1>
+  <div id="rules">
+    <p>📜 Among 5 cards, only <b>1 card</b> contains the correct Rialo logo.</p>
+  </div>
+
+  <div id="game"></div>
+  <button onclick="resetGame()">Play Again</button>
+
+  <canvas id="confettiCanvas"></canvas>
+
+  <!-- Sounds -->
+  <audio id="winSound" src="https://www.myinstants.com/media/sounds/tada-fanfare.mp3"></audio>
+  <audio id="loseSound" src="https://www.myinstants.com/media/sounds/sad-trombone.mp3"></audio>
+
+  <script>
+    const IMAGE_SRC = "83c8414c-ef66-4ec3-8fcb-621cb5ab71b7.png"; // correct card (Rialo logo)
+    const MEMES = [
+      "https://i.imgflip.com/30b1gx.jpg",
+      "https://i.imgflip.com/1bij.jpg",
+      "https://i.imgflip.com/26am.jpg",
+      "https://i.imgflip.com/2fm6x.jpg",
+      "https://i.imgflip.com/1ur9b0.jpg"
+    ];
+    let cards = [];
+    let correctIndex = 0;
+    let gameOver = false;
+
+    function createCards() {
+      const game = document.getElementById("game");
+      game.innerHTML = "";
+      cards = [];
+      correctIndex = Math.floor(Math.random() * 5);
+      for (let i = 0; i < 5; i++) {
+        const card = document.createElement("div");
+        card.classList.add("card");
+        card.dataset.index = i;
+        card.innerHTML = `
+          <div class="card-face card-back"></div>
+          <div class="card-face card-front">
+            <img src="${i === correctIndex ? IMAGE_SRC : MEMES[Math.floor(Math.random()*MEMES.length)]}" />
+          </div>`;
+        card.addEventListener("click", () => chooseCard(card));
+        document.getElementById("game").appendChild(card);
+        cards.push(card);
+      }
+    }
+
+    function showAllThenHide() {
+      cards.forEach(card => card.classList.add("flipped"));
+      setTimeout(() => {
+        cards.forEach(card => card.classList.remove("flipped"));
+        shuffleCards();
+      }, 2000);
+    }
+
+    function chooseCard(card) {
+      if (gameOver) return;
+      card.classList.add("flipped");
+      gameOver = true;
+
+      setTimeout(() => {
+        if (parseInt(card.dataset.index) === correctIndex) {
+          document.getElementById("winSound").play();
+          launchConfetti();
+          alert("🎉 Congratulations! You found the right card!");
+        } else {
+          document.getElementById("loseSound").play();
+          alert("❌ Wrong card! Try again.");
+          resetGame();
+        }
+      }, 1000);
+    }
+
+    function shuffleCards() {
+      let i = 0;
+      const shuffleInterval = setInterval(() => {
+        const idx1 = Math.floor(Math.random() * cards.length);
+        const idx2 = Math.floor(Math.random() * cards.length);
+        if (idx1 !== idx2) {
+          cards[idx1].style.transform = "rotateY(180deg) rotateZ(20deg)";
+          cards[idx2].style.transform = "rotateY(180deg) rotateZ(-20deg)";
+          setTimeout(() => {
+            document.getElementById("game").insertBefore(cards[idx1], cards[idx2]);
+            cards[idx1].style.transform = "";
+            cards[idx2].style.transform = "";
+          }, 500);
+        }
+        i++;
+        if (i > 10) clearInterval(shuffleInterval);
+      }, 600);
+    }
+
+    function resetGame() {
+      gameOver = false;
+      createCards();
+      showAllThenHide();
+    }
+
+    // Confetti effect
+    function launchConfetti() {
+      const canvas = document.getElementById("confettiCanvas");
+      const ctx = canvas.getContext("2d");
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+
+      const particles = [];
+      for (let i = 0; i < 150; i++) {
+        particles.push({
+          x: Math.random() * canvas.width,
+          y: Math.random() * canvas.height - canvas.height,
+          color: `hsl(${Math.random() * 360}, 100%, 50%)`,
+          size: Math.random() * 8 + 2,
+          speed: Math.random() * 3 + 2
+        });
+      }
+
+      function draw() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        particles.forEach(p => {
+          ctx.fillStyle = p.color;
+          ctx.beginPath();
+          ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+          ctx.fill();
+        });
+      }
+
+      function update() {
+        particles.forEach(p => {
+          p.y += p.speed;
+          if (p.y > canvas.height) p.y = -10;
+        });
+      }
+
+      function animate() {
+        draw();
+        update();
+        requestAnimationFrame(animate);
+      }
+      animate();
+
+      setTimeout(() => ctx.clearRect(0,0,canvas.width,canvas.height), 5000);
+    }
+
+    resetGame();
+  </script>
+</body>
+</html>
